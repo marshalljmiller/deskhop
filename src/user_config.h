@@ -31,7 +31,7 @@
  * are rare.
  * */
 
-#define HOTKEY_TOGGLE HID_KEY_CAPS_LOCK
+#define HOTKEY_TOGGLE HID_KEY_NUM_LOCK
 
 /**================================================== *
  * ==============  Mouse Speed Factor  ============== *
