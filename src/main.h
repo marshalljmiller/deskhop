@@ -61,16 +61,16 @@
 #define GPIO_LED_PIN   25 // LED is connected to pin 25 on a PICO
 
 #if BOARD_ROLE == PICO_B
-#define SERIAL_TX_PIN 16
-#define SERIAL_RX_PIN 17
-#elif BOARD_ROLE == PICO_A
 #define SERIAL_TX_PIN 12
 #define SERIAL_RX_PIN 13
+#elif BOARD_ROLE == PICO_A
+#define SERIAL_TX_PIN 16
+#define SERIAL_RX_PIN 17
 #endif
 
 /*********  Serial port definitions  **********/
 #define SERIAL_UART     uart0
-#define SERIAL_BAUDRATE 3686400
+#define SERIAL_BAUDRATE 1024000
 
 #define SERIAL_DATA_BITS 8
 #define SERIAL_STOP_BITS 1
