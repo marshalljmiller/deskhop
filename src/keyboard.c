@@ -157,6 +157,16 @@ void release_all_keys(device_t *state) {
     queue_try_add(&state->kbd_queue, &no_keys_pressed_report);
 }
 
+void send_keycombo(hotkey_combo_t *keycombo, device_t *state) {
+    hid_keyboard_report_t report = {};
+    report.modifier = keycombo->modifier;
+    for (int j = 0; j < keycombo->key_count; j++) {
+        report.keycode[j] = keycombo->keys[j];
+    }
+
+    send_key(&report, state);
+}
+
 /* If keys need to go locally, queue packet to kbd queue, else send them through UART */
 void send_key(hid_keyboard_report_t *report, device_t *state) {
     if (CURRENT_BOARD_IS_ACTIVE_OUTPUT) {

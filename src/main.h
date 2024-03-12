@@ -44,6 +44,9 @@
 #define OUTPUT_A 0
 #define OUTPUT_B 1
 
+#define DESKTOP_1 0
+#define DESKTOP_2 1
+
 #define ENABLE  1
 #define DISABLE 0
 
@@ -217,6 +220,7 @@ typedef struct {
     receiver_state_t receiver_state;     // Storing the state for the simple receiver state machine
     uint64_t core1_last_loop_pass;       // Timestamp of last core1 loop execution
     uint8_t active_output;               // Currently selected output (0 = A, 1 = B)
+    uint8_t active_desktop;              // Currently selected desktop (0 = DESKTOP_1, 1 = DESKTOP_2)
 
     int16_t mouse_x; // Store and update the location of our mouse pointer
     int16_t mouse_y;
@@ -253,6 +257,7 @@ void process_keyboard_report(uint8_t *, int, device_t *);
 void release_all_keys(device_t *);
 void queue_kbd_report(hid_keyboard_report_t *, device_t *);
 void process_kbd_queue_task(device_t *);
+void send_keycombo(hotkey_combo_t *, device_t *);
 void send_key(hid_keyboard_report_t *, device_t *);
 
 /*********  Mouse  **********/

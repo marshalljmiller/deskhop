@@ -17,6 +17,18 @@
 
 #include "main.h"
 
+hotkey_combo_t SWITCH_TO_DESKTOP_1 = {
+    .modifier = KEYBOARD_MODIFIER_LEFTCTRL | KEYBOARD_MODIFIER_LEFTSHIFT,
+    .keys = {HID_KEY_ARROW_RIGHT},
+    .key_count = 1,
+};
+
+hotkey_combo_t SWITCH_TO_DESKTOP_2 = {
+    .modifier = KEYBOARD_MODIFIER_LEFTCTRL | KEYBOARD_MODIFIER_LEFTSHIFT,
+    .keys = {HID_KEY_ARROW_LEFT},
+    .key_count = 1,
+};
+
 /* Move mouse coordinate 'position' by 'offset', but don't fall off the screen */
 int32_t move_and_keep_on_screen(int position, int offset) {
     /* Lowest we can go is 0 */
@@ -95,6 +107,17 @@ int16_t scale_y_coordinate(int screen_from, int screen_to, device_t *state) {
     return ((state->mouse_y - from->border.top) * MAX_SCREEN_COORD) / size_from;
 }
 
+void switch_desktop(device_t *state, int output_from, int output_to) {
+    if (output_to == DESKTOP_1) {
+        send_keycombo(&SWITCH_TO_DESKTOP_1, state);
+    } else {
+        send_keycombo(&SWITCH_TO_DESKTOP_2, state);
+    }
+    state->mouse_y = (output_to == DESKTOP_1) ? MIN_SCREEN_COORD : MAX_SCREEN_COORD;
+    state->active_desktop = output_to;
+    switch_output(state, state->active_output);
+}
+
 void switch_screen(device_t *state, int new_x, int output_from, int output_to) {
     mouse_abs_report_t hidden_pointer = {.y = MIN_SCREEN_COORD, .x = MAX_SCREEN_COORD};
 
@@ -106,6 +129,7 @@ void switch_screen(device_t *state, int new_x, int output_from, int output_to) {
 
 void check_screen_switch(const mouse_values_t *values, device_t *state) {
     int new_x = state->mouse_x + values->move_x;
+    int new_y = state->mouse_y + values->move_y;
 
     /* No switching allowed if explicitly disabled */
     if (state->switch_lock)
@@ -119,6 +143,16 @@ void check_screen_switch(const mouse_values_t *values, device_t *state) {
     /* End of screen right switches screen B->A  TODO: make configurable */
     else if (new_x > MAX_SCREEN_COORD + JUMP_THRESHOLD && state->active_output == OUTPUT_B) {
         switch_screen(state, new_x, OUTPUT_B, OUTPUT_A);
+    }
+
+    /* Switch from Desktop 2->1 */
+    else if (new_y > MAX_SCREEN_COORD && state->active_output == OUTPUT_A && state->active_desktop == DESKTOP_2) {
+        switch_desktop(state, DESKTOP_2, DESKTOP_1);
+    }
+
+    /* Switch from Desktop 1->2 */
+    else if (new_y < MIN_SCREEN_COORD && state->active_output == OUTPUT_A && state->active_desktop == DESKTOP_1) {
+        switch_desktop(state, DESKTOP_1, DESKTOP_2);
     }
 }
 
