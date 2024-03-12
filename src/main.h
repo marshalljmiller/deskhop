@@ -265,7 +265,7 @@ parse_report_descriptor(mouse_t *mouse, uint8_t arr_count, uint8_t const *desc_r
 int32_t get_report_value(uint8_t *report, report_val_t *val);
 void process_mouse_queue_task(device_t *);
 void queue_mouse_report(mouse_abs_report_t *, device_t *);
-void output_mouse_report(mouse_abs_report_t *, device_t *);
+void output_mouse_report(mouse_abs_report_t *, mouse_abs_report_t *, device_t *);
 
 /*********  UART  **********/
 void receive_char(uart_packet_t *, device_t *);

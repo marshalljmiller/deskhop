@@ -49,12 +49,18 @@ void update_mouse_position(device_t *state, mouse_values_t *values) {
 }
 
 /* If we are active output, queue packet to mouse queue, else send them through UART */
-void output_mouse_report(mouse_abs_report_t *report, device_t *state) {
+void output_mouse_report(mouse_abs_report_t *real_report, mouse_abs_report_t *wiggle_report, device_t *state) {
     if (CURRENT_BOARD_IS_ACTIVE_OUTPUT) {
-        queue_mouse_report(report, state);
+        queue_mouse_report(real_report, state);
+	if (wiggle_report != NULL) {
+            send_packet((uint8_t *)wiggle_report, MOUSE_REPORT_MSG, MOUSE_REPORT_LENGTH);
+	}
         state->last_activity[BOARD_ROLE] = time_us_64();
     } else {
-        send_packet((uint8_t *)report, MOUSE_REPORT_MSG, MOUSE_REPORT_LENGTH);
+	if (wiggle_report != NULL) {
+            queue_mouse_report(wiggle_report, state);
+	}
+        send_packet((uint8_t *)real_report, MOUSE_REPORT_MSG, MOUSE_REPORT_LENGTH);
     }
 }
 
@@ -92,7 +98,7 @@ int16_t scale_y_coordinate(int screen_from, int screen_to, device_t *state) {
 void switch_screen(device_t *state, int new_x, int output_from, int output_to) {
     mouse_abs_report_t hidden_pointer = {.y = MIN_SCREEN_COORD, .x = MAX_SCREEN_COORD};
 
-    output_mouse_report(&hidden_pointer, state);
+    output_mouse_report(&hidden_pointer, NULL, state);
     switch_output(state, output_to);
     state->mouse_x = (output_to == OUTPUT_A) ? MIN_SCREEN_COORD : MAX_SCREEN_COORD;
     state->mouse_y = scale_y_coordinate(output_from, output_to, state);
@@ -147,6 +153,15 @@ mouse_abs_report_t create_mouse_report(device_t *state, mouse_values_t *values) 
     return abs_mouse_report;
 }
 
+mouse_abs_report_t create_mouse_wiggle_report(device_t *state, mouse_values_t *values) {
+    mouse_abs_report_t wiggle_mouse_report = {.buttons = 0,
+                                              .x       = MAX_SCREEN_COORD,
+                                              .y       = state->mouse_y,
+                                              .wheel   = 0,
+                                              .pan     = 0};
+    return wiggle_mouse_report;
+}
+
 void process_mouse_report(uint8_t *raw_report, int len, device_t *state) {
     mouse_values_t values = {0};
 
@@ -157,10 +172,11 @@ void process_mouse_report(uint8_t *raw_report, int len, device_t *state) {
     update_mouse_position(state, &values);
 
     /* Create the report for the output PC based on the updated values */
-    mouse_abs_report_t report = create_mouse_report(state, &values);
+    mouse_abs_report_t real_report = create_mouse_report(state, &values);
+    mouse_abs_report_t wiggle_report = create_mouse_wiggle_report(state, &values);
 
     /* Move the mouse, depending where the output is supposed to go */
-    output_mouse_report(&report, state);
+    output_mouse_report(&real_report, &wiggle_report, state);
 
     /* We use the mouse to switch outputs, the logic is in check_screen_switch() */
     check_screen_switch(&values, state);
