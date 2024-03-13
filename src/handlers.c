@@ -100,6 +100,15 @@ void handle_mouse_abs_uart_msg(uart_packet_t *packet, device_t *state) {
     state->last_activity[BOARD_ROLE] = time_us_64();
 }
 
+/* Function handles received mouse moves from the other board.
+ * Same as handle_mouse_abs_uart_msg() but does not save position */
+void handle_mouse_wiggle_uart_msg(uart_packet_t *packet, device_t *state) {
+    mouse_abs_report_t *mouse_report = (mouse_abs_report_t *)packet->data;
+    queue_mouse_report(mouse_report, state);
+
+    state->last_activity[BOARD_ROLE] = time_us_64();
+}
+
 /* Function handles request to switch output  */
 void handle_output_select_msg(uart_packet_t *packet, device_t *state) {
     state->active_output = packet->data[0];

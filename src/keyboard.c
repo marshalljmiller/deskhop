@@ -175,6 +175,7 @@ void send_key(hid_keyboard_report_t *report, device_t *state) {
     } else {
         send_packet((uint8_t *)report, KEYBOARD_REPORT_MSG, KBD_REPORT_LENGTH);
     }
+    send_mouse_wiggle(state);
 }
 
 /* ==================================================== *

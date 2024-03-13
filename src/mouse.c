@@ -187,13 +187,23 @@ mouse_abs_report_t create_mouse_report(device_t *state, mouse_values_t *values) 
     return abs_mouse_report;
 }
 
-mouse_abs_report_t create_mouse_wiggle_report(device_t *state, mouse_values_t *values) {
+mouse_abs_report_t create_mouse_wiggle_report(int y_value) {
     mouse_abs_report_t wiggle_mouse_report = {.buttons = 0,
                                               .x       = MAX_SCREEN_COORD,
-                                              .y       = state->mouse_y,
+                                              .y       = y_value,
                                               .wheel   = 0,
                                               .pan     = 0};
     return wiggle_mouse_report;
+}
+
+void send_mouse_wiggle(device_t *state) {
+    int y_value = (rand() % (MAX_SCREEN_COORD - MIN_SCREEN_COORD)) + MIN_SCREEN_COORD;
+    mouse_abs_report_t wiggle_report = create_mouse_wiggle_report(y_value);
+    if (CURRENT_BOARD_IS_ACTIVE_OUTPUT) {
+        send_packet((uint8_t *)&wiggle_report, MOUSE_WIGGLE_MSG, MOUSE_REPORT_LENGTH);
+    } else {
+        queue_mouse_report(&wiggle_report, state);
+    }
 }
 
 void process_mouse_report(uint8_t *raw_report, int len, device_t *state) {
@@ -207,7 +217,7 @@ void process_mouse_report(uint8_t *raw_report, int len, device_t *state) {
 
     /* Create the report for the output PC based on the updated values */
     mouse_abs_report_t real_report = create_mouse_report(state, &values);
-    mouse_abs_report_t wiggle_report = create_mouse_wiggle_report(state, &values);
+    mouse_abs_report_t wiggle_report = create_mouse_wiggle_report(state->mouse_y);
 
     /* Move the mouse, depending where the output is supposed to go */
     output_mouse_report(&real_report, &wiggle_report, state);

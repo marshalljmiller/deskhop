@@ -106,6 +106,7 @@ enum packet_type_e {
     FLASH_LED_MSG        = 9,
     SCREENSAVER_MSG      = 10,
     WIPE_CONFIG_MSG      = 11,
+    MOUSE_WIGGLE_MSG     = 12,
 };
 
 /*
@@ -271,6 +272,7 @@ int32_t get_report_value(uint8_t *report, report_val_t *val);
 void process_mouse_queue_task(device_t *);
 void queue_mouse_report(mouse_abs_report_t *, device_t *);
 void output_mouse_report(mouse_abs_report_t *, mouse_abs_report_t *, device_t *);
+void send_mouse_wiggle(device_t *state);
 
 /*********  UART  **********/
 void receive_char(uart_packet_t *, device_t *);
@@ -310,6 +312,7 @@ void screensaver_hotkey_handler(device_t *);
 
 void handle_keyboard_uart_msg(uart_packet_t *, device_t *);
 void handle_mouse_abs_uart_msg(uart_packet_t *, device_t *);
+void handle_mouse_wiggle_uart_msg(uart_packet_t *, device_t *);
 void handle_output_select_msg(uart_packet_t *, device_t *);
 void handle_mouse_zoom_msg(uart_packet_t *, device_t *);
 void handle_set_report_msg(uart_packet_t *, device_t *);

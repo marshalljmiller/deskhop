@@ -47,6 +47,7 @@ void send_value(const uint8_t value, enum packet_type_e packet_type) {
 const uart_handler_t uart_handler[] = {
     {.type = KEYBOARD_REPORT_MSG, .handler = handle_keyboard_uart_msg},
     {.type = MOUSE_REPORT_MSG, .handler = handle_mouse_abs_uart_msg},
+    {.type = MOUSE_WIGGLE_MSG, .handler = handle_mouse_wiggle_uart_msg},
     {.type = OUTPUT_SELECT_MSG, .handler = handle_output_select_msg},
     {.type = FIRMWARE_UPGRADE_MSG, .handler = handle_fw_upgrade_msg},
     {.type = MOUSE_ZOOM_MSG, .handler = handle_mouse_zoom_msg},
