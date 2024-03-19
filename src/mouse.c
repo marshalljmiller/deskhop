@@ -17,17 +17,176 @@
 
 #include "main.h"
 
-hotkey_combo_t SWITCH_TO_DESKTOP_1 = {
+#define COORD_PERCENT(P) ((((MAX_SCREEN_COORD-MIN_SCREEN_COORD)*P)/100)+MIN_SCREEN_COORD)
+
+const hotkey_combo_t SWITCH_TO_DESKTOP_1 = {
     .modifier = KEYBOARD_MODIFIER_LEFTCTRL | KEYBOARD_MODIFIER_LEFTSHIFT,
     .keys = {HID_KEY_ARROW_RIGHT},
     .key_count = 1,
 };
 
-hotkey_combo_t SWITCH_TO_DESKTOP_2 = {
+const hotkey_combo_t SWITCH_TO_DESKTOP_2 = {
     .modifier = KEYBOARD_MODIFIER_LEFTCTRL | KEYBOARD_MODIFIER_LEFTSHIFT,
     .keys = {HID_KEY_ARROW_LEFT},
     .key_count = 1,
 };
+
+transition_t transitions[] = {
+    {
+        .output = OUTPUT_A,
+        .desktop = DESKTOP_1,
+        .to_output = OUTPUT_A,
+        .to_desktop = DESKTOP_2,
+        .switch_keycombo = SWITCH_TO_DESKTOP_2,
+        .edge = LEFT,
+        .edge_min = COORD_PERCENT(0),
+        .edge_max = COORD_PERCENT(50),
+        .to_edge = RIGHT,
+        .to_edge_min = COORD_PERCENT(75),
+        .to_edge_max = COORD_PERCENT(100),
+    },
+    {
+        .output = OUTPUT_A,
+        .desktop = DESKTOP_2,
+        .to_output = OUTPUT_A,
+        .to_desktop = DESKTOP_1,
+        .switch_keycombo = SWITCH_TO_DESKTOP_1,
+        .to_edge = LEFT,
+        .to_edge_min = COORD_PERCENT(0),
+        .to_edge_max = COORD_PERCENT(50),
+        .edge = RIGHT,
+        .edge_min = COORD_PERCENT(75),
+        .edge_max = COORD_PERCENT(100),
+    },
+    {
+        .output = OUTPUT_A,
+        .desktop = DESKTOP_1,
+        .to_output = OUTPUT_B,
+        .to_desktop = DESKTOP_1,
+        .edge = LEFT,
+        .edge_min = COORD_PERCENT(50),
+        .edge_max = COORD_PERCENT(100),
+        .to_edge = RIGHT,
+        .to_edge_min = COORD_PERCENT(0),
+        .to_edge_max = COORD_PERCENT(50),
+    },
+    {
+        .output = OUTPUT_B,
+        .desktop = DESKTOP_1,
+        .to_output = OUTPUT_A,
+        .to_desktop = DESKTOP_1,
+        .switch_keycombo = SWITCH_TO_DESKTOP_1,
+        .to_edge = LEFT,
+        .to_edge_min = COORD_PERCENT(50),
+        .to_edge_max = COORD_PERCENT(100),
+        .edge = RIGHT,
+        .edge_min = COORD_PERCENT(0),
+        .edge_max = COORD_PERCENT(50),
+    },
+    {
+        .output = OUTPUT_A,
+        .desktop = DESKTOP_2,
+        .to_output = OUTPUT_B,
+        .to_desktop = DESKTOP_1,
+        .edge = BOTTOM,
+        .edge_min = COORD_PERCENT(70),
+        .edge_max = COORD_PERCENT(100),
+        .to_edge = TOP,
+        .to_edge_min = COORD_PERCENT(99),
+        .to_edge_max = COORD_PERCENT(100),
+    },
+    {
+        .output = OUTPUT_A,
+        .desktop = DESKTOP_2,
+        .to_output = OUTPUT_B,
+        .to_desktop = DESKTOP_1,
+        .edge = BOTTOM,
+        .edge_min = COORD_PERCENT(25),
+        .edge_max = COORD_PERCENT(70),
+        .to_edge = TOP,
+        .to_edge_min = COORD_PERCENT(0),
+        .to_edge_max = COORD_PERCENT(100),
+    },
+    {
+        .output = OUTPUT_B,
+        .desktop = DESKTOP_1,
+        .to_output = OUTPUT_A,
+        .to_desktop = DESKTOP_2,
+        .switch_keycombo = SWITCH_TO_DESKTOP_2,
+        .to_edge = BOTTOM,
+        .to_edge_min = COORD_PERCENT(25),
+        .to_edge_max = COORD_PERCENT(70),
+        .edge = TOP,
+        .edge_min = COORD_PERCENT(0),
+        .edge_max = COORD_PERCENT(100),
+    },
+};
+
+int8_t edge_crossed(const mouse_values_t *values, device_t *state, edge_crossing_t *crossing) {
+    int new_x = state->mouse_x + values->move_x;
+    int new_y = state->mouse_y + values->move_y;
+
+    /* No switching allowed if explicitly disabled */
+    if (state->switch_lock)
+        return 0;
+
+    /* Crossed left edge of screen */
+    if (new_x < MIN_SCREEN_COORD - JUMP_THRESHOLD) {
+        crossing->edge = LEFT;
+        crossing->edge_position = state->mouse_y;
+        return 1;
+    }
+
+    /* Crossed right edge of screen */
+    else if (new_x > MAX_SCREEN_COORD + JUMP_THRESHOLD) {
+        crossing->edge = RIGHT;
+        crossing->edge_position = state->mouse_y;
+        return 1;
+    }
+
+    /* Crossed top edge of screen */
+    else if (new_y > MAX_SCREEN_COORD + JUMP_THRESHOLD) {
+        crossing->edge = BOTTOM;
+        crossing->edge_position = state->mouse_x;
+        return 1;
+    }
+
+    /* Crossed bottom edge of screen */
+    else if (new_y < MIN_SCREEN_COORD - JUMP_THRESHOLD) {
+        crossing->edge = TOP;
+        crossing->edge_position = state->mouse_x;
+        return 1;
+    }
+
+    return 0;
+}
+
+int8_t transition_match(const edge_crossing_t *crossing, const transition_t *transition, device_t *state) {
+    if (state->active_output != transition->output) {
+        return 0;
+    }
+    if (state->active_desktop != transition->desktop) {
+        return 0;
+    }
+    if (crossing->edge != transition->edge) {
+        return 0;
+    }
+    if (crossing->edge_position < transition->edge_min || crossing->edge_position > transition->edge_max) {
+        return 0;
+    }
+    return 1;
+}
+
+int8_t get_transition_info(const edge_crossing_t *crossing, device_t *state, transition_t *transition) {
+    for (int j=0; j<ARRAY_SIZE(transitions); j++) {
+        if (transition_match(crossing, &transitions[j], state)) {
+            *transition = transitions[j];
+            return 1;
+        }
+    }
+            
+    return 0;
+}
 
 /* Move mouse coordinate 'position' by 'offset', but don't fall off the screen */
 int32_t move_and_keep_on_screen(int position, int offset) {
@@ -64,96 +223,65 @@ void update_mouse_position(device_t *state, mouse_values_t *values) {
 void output_mouse_report(mouse_abs_report_t *real_report, mouse_abs_report_t *wiggle_report, device_t *state) {
     if (CURRENT_BOARD_IS_ACTIVE_OUTPUT) {
         queue_mouse_report(real_report, state);
-	if (wiggle_report != NULL) {
+       if (wiggle_report != NULL) {
             send_packet((uint8_t *)wiggle_report, MOUSE_REPORT_MSG, MOUSE_REPORT_LENGTH);
-	}
+        }
         state->last_activity[BOARD_ROLE] = time_us_64();
     } else {
-	if (wiggle_report != NULL) {
+        if (wiggle_report != NULL) {
             queue_mouse_report(wiggle_report, state);
-	}
+        }
         send_packet((uint8_t *)real_report, MOUSE_REPORT_MSG, MOUSE_REPORT_LENGTH);
     }
 }
 
-/* Calculate and return Y coordinate when moving from screen out_from to screen out_to */
-int16_t scale_y_coordinate(int screen_from, int screen_to, device_t *state) {
-    output_t *from = &state->config.output[screen_from];
-    output_t *to   = &state->config.output[screen_to];
+#define TRANSLATE_POSITION(A, MIN1, MAX1, MIN2, MAX2) ( (MAX2-MIN2) * (A-MIN1) / (MAX1-MIN1) + MIN2)
 
-    int size_to   = to->border.bottom - to->border.top;
-    int size_from = from->border.bottom - from->border.top;
-
-    /* If sizes match, there is nothing to do */
-    if (size_from == size_to)
-        return state->mouse_y;
-
-    /* Moving from smaller ==> bigger screen
-       y_a = top + (((bottom - top) * y_b) / HEIGHT) */
-
-    if (size_from > size_to) {
-        return to->border.top + ((size_to * state->mouse_y) / MAX_SCREEN_COORD);
-    }
-
-    /* Moving from bigger ==> smaller screen
-       y_b = ((y_a - top) * HEIGHT) / (bottom - top) */
-
-    if (state->mouse_y < from->border.top)
-        return MIN_SCREEN_COORD;
-
-    if (state->mouse_y > from->border.bottom)
-        return MAX_SCREEN_COORD;
-
-    return ((state->mouse_y - from->border.top) * MAX_SCREEN_COORD) / size_from;
-}
-
-void switch_desktop(device_t *state, int output_from, int output_to) {
-    if (output_to == DESKTOP_1) {
-        send_keycombo(&SWITCH_TO_DESKTOP_1, state);
-    } else {
-        send_keycombo(&SWITCH_TO_DESKTOP_2, state);
-    }
-    state->mouse_y = (output_to == DESKTOP_1) ? MIN_SCREEN_COORD : MAX_SCREEN_COORD;
-    state->active_desktop = output_to;
-    switch_output(state, state->active_output);
-}
-
-void switch_screen(device_t *state, int new_x, int output_from, int output_to) {
+void switch_screen(const transition_t *transition, device_t *state) {
     mouse_abs_report_t hidden_pointer = {.y = MIN_SCREEN_COORD, .x = MAX_SCREEN_COORD};
 
     output_mouse_report(&hidden_pointer, NULL, state);
-    switch_output(state, output_to);
-    state->mouse_x = (output_to == OUTPUT_A) ? MIN_SCREEN_COORD : MAX_SCREEN_COORD;
-    state->mouse_y = scale_y_coordinate(output_from, output_to, state);
+    switch_output(state, transition->to_output);
+
+    state->active_desktop = transition->to_desktop;
+
+    if (transition->switch_keycombo.key_count != 0 || transition->switch_keycombo.modifier != 0) {
+       send_keycombo(&transition->switch_keycombo, state);
+    }
+
+    // calling switch_output a second time to release keycombo
+    // TODO: figure out why calling send key {0} doesn't release keys
+    switch_output(state, transition->to_output);
+
+    if (transition->to_edge == LEFT || transition->to_edge == RIGHT) {
+        state->mouse_x = (transition->to_edge == LEFT) ? MIN_SCREEN_COORD : MAX_SCREEN_COORD;
+        state->mouse_y = TRANSLATE_POSITION(state->mouse_y,
+                                            transition->edge_min,
+                                            transition->edge_max,
+                                            transition->to_edge_min,
+                                            transition->to_edge_max);
+    } else {
+        state->mouse_y = (transition->to_edge == TOP) ? MIN_SCREEN_COORD : MAX_SCREEN_COORD;
+        state->mouse_x = TRANSLATE_POSITION(state->mouse_x,
+                                            transition->edge_min,
+                                            transition->edge_max,
+                                            transition->to_edge_min,
+                                            transition->to_edge_max);
+    }
 }
 
 void check_screen_switch(const mouse_values_t *values, device_t *state) {
-    int new_x = state->mouse_x + values->move_x;
-    int new_y = state->mouse_y + values->move_y;
-
-    /* No switching allowed if explicitly disabled */
-    if (state->switch_lock)
+    edge_crossing_t crossing;
+    if (!edge_crossed(values, state, &crossing)) {
         return;
-
-    /* End of screen left switches screen A->B  TODO: make configurable */
-    if (new_x < MIN_SCREEN_COORD - JUMP_THRESHOLD && state->active_output == OUTPUT_A) {
-        switch_screen(state, new_x, OUTPUT_A, OUTPUT_B);
     }
 
-    /* End of screen right switches screen B->A  TODO: make configurable */
-    else if (new_x > MAX_SCREEN_COORD + JUMP_THRESHOLD && state->active_output == OUTPUT_B) {
-        switch_screen(state, new_x, OUTPUT_B, OUTPUT_A);
+    transition_t transition;
+    if (!get_transition_info(&crossing, state, &transition)) {
+        return;
     }
 
-    /* Switch from Desktop 2->1 */
-    else if (new_y > MAX_SCREEN_COORD && state->active_output == OUTPUT_A && state->active_desktop == DESKTOP_2) {
-        switch_desktop(state, DESKTOP_2, DESKTOP_1);
-    }
-
-    /* Switch from Desktop 1->2 */
-    else if (new_y < MIN_SCREEN_COORD && state->active_output == OUTPUT_A && state->active_desktop == DESKTOP_1) {
-        switch_desktop(state, DESKTOP_1, DESKTOP_2);
-    }
+    switch_screen(&transition, state);
 }
 
 void extract_report_values(uint8_t *raw_report, device_t *state, mouse_values_t *values) {

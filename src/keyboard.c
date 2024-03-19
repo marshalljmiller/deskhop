@@ -157,7 +157,7 @@ void release_all_keys(device_t *state) {
     queue_try_add(&state->kbd_queue, &no_keys_pressed_report);
 }
 
-void send_keycombo(hotkey_combo_t *keycombo, device_t *state) {
+void send_keycombo(const hotkey_combo_t *keycombo, device_t *state) {
     hid_keyboard_report_t report = {};
     report.modifier = keycombo->modifier;
     for (int j = 0; j < keycombo->key_count; j++) {

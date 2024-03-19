@@ -212,6 +212,27 @@ typedef struct TU_ATTR_PACKED {
 
 typedef enum { IDLE, READING_PACKET, PROCESSING_PACKET } receiver_state_t;
 
+typedef enum { TOP, BOTTOM, LEFT, RIGHT } edge_t;
+
+typedef struct {
+    uint8_t output;
+    uint8_t desktop;
+    uint8_t to_output;
+    uint8_t to_desktop;
+    hotkey_combo_t switch_keycombo;
+    edge_t edge;
+    int16_t edge_min;
+    int16_t edge_max;
+    edge_t to_edge;
+    int16_t to_edge_min;
+    int16_t to_edge_max;
+} transition_t;
+
+typedef struct {
+    edge_t edge;
+    int16_t edge_position;
+} edge_crossing_t;
+
 typedef struct {
     uint8_t kbd_dev_addr; // Address of the keyboard device
     uint8_t kbd_instance; // Keyboard instance (d'uh - isn't this a useless comment)
@@ -258,7 +279,7 @@ void process_keyboard_report(uint8_t *, int, device_t *);
 void release_all_keys(device_t *);
 void queue_kbd_report(hid_keyboard_report_t *, device_t *);
 void process_kbd_queue_task(device_t *);
-void send_keycombo(hotkey_combo_t *, device_t *);
+void send_keycombo(const hotkey_combo_t *, device_t *);
 void send_key(hid_keyboard_report_t *, device_t *);
 
 /*********  Mouse  **********/
